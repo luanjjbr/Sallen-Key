@@ -1,0 +1,292 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<?application progid="SMath Solver" version="1.4.0.9654"?>
+<worksheet xmlns="http://smath.info/schemas/worksheet/1.0">
+  <settings ppi="96">
+    <identity>
+      <id>1379d85d-ee1b-4e35-a463-0b190dcba18f</id>
+      <revision>3</revision>
+    </identity>
+    <calculation>
+      <precision>4</precision>
+      <exponentialThreshold>5</exponentialThreshold>
+      <trailingZeros>false</trailingZeros>
+      <significantDigitsMode>false</significantDigitsMode>
+      <mixedNumbers>false</mixedNumbers>
+      <roundingMode>0</roundingMode>
+      <approximateEqualAccuracy>3</approximateEqualAccuracy>
+      <fractions>decimal</fractions>
+    </calculation>
+    <pageModel active="false" viewMode="2" printGrid="false" printAreas="true" simpleEqualsOnly="false" printBackgroundImages="true" hideElementsHighlightings="true">
+      <paper id="9" orientation="Portrait" width="827" height="1169" />
+      <margins left="39" right="39" top="49" bottom="49" />
+      <header alignment="Center" color="#a9a9a9">&amp;[DATE] &amp;[TIME] - &amp;[FILENAME]</header>
+      <footer alignment="Center" color="#a9a9a9">&amp;[PAGENUM] / &amp;[COUNT]</footer>
+      <backgrounds />
+    </pageModel>
+    <dependencies>
+      <assembly name="SMath Core" version="1.74.9654.0" guid="a37cba83-b69c-4c71-9992-55ff666763bd" />
+      <assembly name="MathRegion" version="1.74.9654.0" guid="02f1ab51-215b-466e-a74d-5d8b1cf85e8d" />
+      <assembly name="SpecialFunctions" version="1.74.9654.0" guid="2814e667-4e12-48b1-8d51-194e480eabc5" />
+      <assembly name="TextRegion" version="1.74.9654.0" guid="485d28c5-349a-48b6-93be-12a35a1c1e39" />
+      <assembly name="X-Y Plot Region (JXCharts)" version="0.4.9441.40064" guid="c12231ec-4873-43c1-a7d0-a167ebd17066" />
+    </dependencies>
+  </settings>
+  <regions type="content">
+    <region left="36" top="45" width="594" height="23" color="#000000" fontSize="10">
+      <text lang="cpp" fontFamily="Arial" fontSize="10">
+        <content>
+          <p>k (ganho DC) → o valor final que a saída estaciona, dividido pela amplitude do degrau de entrada.</p>
+        </content>
+      </text>
+    </region>
+    <region left="36" top="90" width="122" height="41" color="#000000" fontSize="10">
+      <math>
+        <input>
+          <e type="operand">k</e>
+          <e type="operand">326</e>
+          <e type="operand">500</e>
+          <e type="operator" args="2">/</e>
+          <e type="operator" args="2">:</e>
+        </input>
+        <result action="numeric">
+          <e type="operand">0.652</e>
+        </result>
+      </math>
+    </region>
+    <region left="36" top="135" width="720" height="38" color="#000000" fontSize="10">
+      <text lang="cpp" fontFamily="Arial" fontSize="10">
+        <content>
+          <p>ζ (zeta, amortecimento) → tirado do sobre-sinal (quanto a resposta ultrapassa o valor final). Quanto maior o overshoot, menor o ζ.</p>
+        </content>
+      </text>
+    </region>
+    <region left="45" top="180" width="177" height="41" color="#000000" fontSize="10">
+      <math>
+        <input>
+          <e type="operand">Mp</e>
+          <e type="operand">578</e>
+          <e type="operand">327</e>
+          <e type="operator" args="2">-</e>
+          <e type="operand">327</e>
+          <e type="operator" args="2">/</e>
+          <e type="operator" args="2">:</e>
+        </input>
+        <result action="numeric">
+          <e type="operand">0.7676</e>
+        </result>
+      </math>
+    </region>
+    <region left="54" top="243" width="214" height="54" color="#000000" fontSize="10">
+      <math>
+        <input>
+          <e type="operand">ζ</e>
+          <e type="operand">Mp</e>
+          <e type="function" args="1">ln</e>
+          <e type="operator" args="1">-</e>
+          <e type="operand">π</e>
+          <e type="operand">2</e>
+          <e type="operator" args="2">^</e>
+          <e type="operand">Mp</e>
+          <e type="function" args="1">ln</e>
+          <e type="operand">2</e>
+          <e type="operator" args="2">^</e>
+          <e type="operator" args="2">+</e>
+          <e type="function" args="1">sqrt</e>
+          <e type="operator" args="2">/</e>
+          <e type="operator" args="2">:</e>
+        </input>
+        <result action="numeric">
+          <e type="operand">0.0839</e>
+        </result>
+      </math>
+    </region>
+    <region left="45" top="324" width="667" height="38" color="#000000" fontSize="10">
+      <text lang="cpp" fontFamily="Arial" fontSize="10">
+        <content>
+          <p>ωn (frequência natural) → tirada do período de oscilação da resposta. No seu código você calcula como ωn = 2π/(N·T), onde N é o número de amostras dentro de um período de oscilação.</p>
+        </content>
+      </text>
+    </region>
+    <region left="63" top="378" width="70" height="24" color="#000000" fontSize="10">
+      <math>
+        <input>
+          <e type="operand">T</e>
+          <e type="operand">0.01</e>
+          <e type="operator" args="2">:</e>
+        </input>
+      </math>
+    </region>
+    <region left="63" top="405" width="54" height="24" color="#000000" fontSize="10">
+      <math>
+        <input>
+          <e type="operand">N</e>
+          <e type="operand">61</e>
+          <e type="operator" args="2">:</e>
+        </input>
+      </math>
+    </region>
+    <region left="63" top="432" width="155" height="43" color="#000000" fontSize="10">
+      <math>
+        <input>
+          <e type="operand">ω</e>
+          <e type="operand">2</e>
+          <e type="operand">π</e>
+          <e type="operator" args="2">*</e>
+          <e type="operand">N</e>
+          <e type="operand">T</e>
+          <e type="operator" args="2">*</e>
+          <e type="bracket">(</e>
+          <e type="operator" args="2">/</e>
+          <e type="operator" args="2">:</e>
+        </input>
+        <result action="numeric">
+          <e type="operand">10.3003</e>
+        </result>
+      </math>
+    </region>
+    <region left="486" top="432" width="134" height="26" color="#000000" fontSize="10">
+      <math>
+        <input>
+          <e type="operand">t</e>
+          <e type="operand">0</e>
+          <e type="operand">10</e>
+          <e type="operand">0.01</e>
+          <e type="function" args="3">range</e>
+          <e type="operator" args="2">:</e>
+        </input>
+      </math>
+    </region>
+    <region left="243" top="477" width="121" height="33" color="#000000" fontSize="10">
+      <math>
+        <input>
+          <e type="operand">ω</e>
+          <e type="operand">2</e>
+          <e type="operator" args="2">^</e>
+          <e type="operand">k</e>
+          <e type="operator" args="2">*</e>
+        </input>
+        <result action="numeric">
+          <e type="operand">69.1748</e>
+        </result>
+      </math>
+    </region>
+    <region left="18" top="486" width="216" height="60" color="#000000" fontSize="10">
+      <math optimize="0" fractionType="fraction">
+        <description active="false" position="Top" lang="eng" />
+        <input>
+          <e type="operand">s</e>
+          <e type="function" args="1">G</e>
+          <e type="operand">ω</e>
+          <e type="operand">2</e>
+          <e type="operator" args="2">^</e>
+          <e type="operand">k</e>
+          <e type="operator" args="2">*</e>
+          <e type="operand">s</e>
+          <e type="operand">2</e>
+          <e type="operator" args="2">^</e>
+          <e type="operand">2</e>
+          <e type="operand">ζ</e>
+          <e type="operator" args="2">*</e>
+          <e type="operand">ω</e>
+          <e type="operator" args="2">*</e>
+          <e type="bracket">(</e>
+          <e type="operand">s</e>
+          <e type="operator" args="2">*</e>
+          <e type="operator" args="2">+</e>
+          <e type="operand">ω</e>
+          <e type="operand">2</e>
+          <e type="operator" args="2">^</e>
+          <e type="operator" args="2">+</e>
+          <e type="operator" args="2">/</e>
+          <e type="operator" args="2">:</e>
+        </input>
+      </math>
+    </region>
+    <region left="378" top="504" width="110" height="33" color="#000000" fontSize="10">
+      <math>
+        <input>
+          <e type="operand">ω</e>
+          <e type="operand">2</e>
+          <e type="operator" args="2">^</e>
+        </input>
+        <result action="numeric">
+          <e type="operand">106.0963</e>
+        </result>
+      </math>
+    </region>
+    <region left="243" top="513" width="131" height="26" color="#000000" fontSize="10">
+      <math>
+        <input>
+          <e type="operand">2</e>
+          <e type="operand">ζ</e>
+          <e type="operator" args="2">*</e>
+          <e type="operand">ω</e>
+          <e type="operator" args="2">*</e>
+          <e type="bracket">(</e>
+        </input>
+        <result action="numeric">
+          <e type="operand">1.7284</e>
+        </result>
+      </math>
+    </region>
+    <region left="0" top="576" width="238" height="50" color="#000000" fontSize="10">
+      <math>
+        <input>
+          <e type="operand">z</e>
+          <e type="function" args="1">G1</e>
+          <e type="operand">0.003436</e>
+          <e type="operand">z</e>
+          <e type="operator" args="2">*</e>
+          <e type="operand">0.003416</e>
+          <e type="operator" args="2">+</e>
+          <e type="operand">z</e>
+          <e type="operand">2</e>
+          <e type="operator" args="2">^</e>
+          <e type="operand">1.972</e>
+          <e type="operand">z</e>
+          <e type="operator" args="2">*</e>
+          <e type="operator" args="2">-</e>
+          <e type="operand">0.9829</e>
+          <e type="operator" args="2">+</e>
+          <e type="operator" args="2">/</e>
+          <e type="operator" args="2">:</e>
+        </input>
+      </math>
+    </region>
+    <region left="252" top="576" width="224" height="53" color="#000000" fontSize="10">
+      <text lang="cpp" fontFamily="Arial" fontSize="10">
+        <content>
+          <p>              0.003436 z + 0.003416<br />G(z) = --------------------------------------<br />               z^2 - 1.972 z + 0.9829</p>
+        </content>
+      </text>
+    </region>
+    <region left="0" top="666" width="310" height="208" color="#000000" bgColor="#ffffff" fontSize="10">
+      <xyplot animFrameRate="20" animPlaybackMode="RepeatIndefinitely" width="300" height="200" points="1000" name="XYPlot" keepAspectRatio="false">
+        <chartstyle usedefault="false" backcolor="White" bordercolor="Black" />
+        <grid gridcolor="LightGray" gridpattern="Dash" gridthickness="1" isxgrid="true" isygrid="true" isy2grid="false" />
+        <xaxes xmin="-1" xmax="20" xtick="1" visible="True" decimalplaces="3" numberformat="General" />
+        <yaxes ymin="-1" ymax="8.978016" ytick="1" visible="True" decimalplaces="3" numberformat="General" />
+        <y2axes isy2axis="false" y2min="-1" y2max="1" y2tick="0.5" visible="True" decimalplaces="3" numberformat="General" />
+        <title2d title="" titlefont="Arial, 10pt" titlefontcolor="Black" />
+        <xylabel labelfont="Arial, 10pt" labelfontcolor="Black" tickfont="Arial, 8pt" tickfontcolor="Black" xlabel="x" ylabel="y" y2label="y2" />
+        <legend isbordervisible="true" islegendvisible="false" legendbackcolor="White" legendbordercolor="Black" legendfont="Arial, 8pt" legendposition="NorthEast" textcolor="Black" />
+        <traces>
+          <trace seriesname="" isy2data="false" isvisible="true" plotmethod="Lines" lineantialias="true" linecolor="Blue" linethickness="1" linepattern="Solid" fillmode="Auto" filltotrace="-1" filled="false" hatched="false" fillcolor="64, 0, 0, 255" hatchstyle="Percent20" symbolantialias="true" symbolsize="8" symboltype="None" symbolborderthickness="1" symbolbordercolor="Black" symbolfillcolor="White" />
+        </traces>
+        <input>
+          <e type="operand">x</e>
+          <e type="function" args="1">G1</e>
+        </input>
+      </xyplot>
+    </region>
+    <region left="450" top="720" width="46" height="24" color="#000000" fontSize="10">
+      <math>
+        <input>
+          <e type="operand">s</e>
+          <e type="operand">1</e>
+          <e type="operator" args="2">:</e>
+        </input>
+      </math>
+    </region>
+  </regions>
+</worksheet>
