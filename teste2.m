@@ -1,0 +1,507 @@
+clc;
+clear;
+close all;
+
+%% #############################################################
+%%   PARÂMETROS GERAIS
+%% #############################################################
+k   = 0.652;
+T   = 10e-3;
+ksi = 0.0839;
+N   = 61;
+ref     = 500;
+ref_2   = 500;
+escala  = 1;
+Tstep   = 10;
+
+%% #############################################################
+%%   1. LEITURA DOS DADOS E MONTAGEM DA PLANTA
+%% #############################################################
+dados = readtable('Vo.csv');
+tempo = dados.tempo;
+Vo    = dados.Vo;
+tempo = tempo - tempo(1);
+
+wn  = 2*pi/(N*T);
+num = k * wn^2;
+den = [1, 2*ksi*wn, wn^2];
+
+sysCont = tf(num, den);
+G = c2d(sysCont, T, 'zoh');
+z = tf('z', T);
+
+% --- Sinal bruto ---
+figure('Name','Dados experimentais');
+plot(tempo, Vo); grid on;
+xlabel('Tempo (s)'); ylabel('Vo (0-1000)');
+title('Sinal Vo Original Extraído do Arduino');
+
+% --- Comparação modelo x real ---
+t_sim  = (0:length(Vo)-1)' * T;
+u = ones(length(Vo),1) * ref;
+yModel = lsim(G, u, t_sim);
+
+figure('Name','Modelo x Real');
+plot(t_sim, Vo,     'r', 'LineWidth', 1.5); hold on;
+plot(t_sim, yModel, 'b', 'LineWidth', 1.5); grid on;
+xlabel('Tempo (s)'); ylabel('Amplitude (0-1000)');
+legend('Vo Medido','Modelo Discreto','Location','best');
+title('Comparação: Vo Real vs Modelo Discreto');
+
+%% =============================================================
+%%   SISTEMA 1 - SEM CONTROLE
+%% =============================================================
+disp(' '); disp('### SISTEMA 1 - SEM CONTROLE ###');
+disp(' '); disp('sysCont'); disp('--- zpk ---'); zpk(sysCont)
+disp(' '); disp('G');       disp('--- zpk ---'); zpk(G)
+
+MA_sc = G;
+MF_sc = feedback(G, 1);
+
+figure; rlocus(G); zgrid; title('Lugar das Raízes - Sem Controle')
+figure; nyquist(MA_sc); grid on; title('Diagrama de Nyquist - G(z)')
+figure; nichols(MA_sc); ngrid; grid on; title('Carta de Nichols - G(z)')
+figure; bode(G); grid on; title('Diagrama de Bode - G(z)')
+[Gm, Pm, Wcg, Wcp] = margin(G)
+
+%% =============================================================
+%%   SISTEMA 2 - PROPORCIONAL
+%% =============================================================
+if false
+disp(' '); disp('### SISTEMA 2 - PROPORCIONAL ###');
+
+Kp = 1.53;
+C  = Kp;
+MA_p = C * G;
+MF_p = feedback(C*G, 1);
+
+disp('--- zpk ---'); zpk(C*G)
+
+figure;
+step(MA_sc,'b'); hold on
+step(MF_p,'r')
+plot(tempo, Vo/ref, 'm')
+grid on
+legend('Sem Controle','Proporcional','Vo Medido')
+title('Resposta ao Degrau - Proporcional')
+hold off
+
+info_P = stepinfo(MF_p);
+disp('### DESEMPENHO PROPORCIONAL ###');
+fprintf('Tempo de subida    : %.4g s\n', info_P.RiseTime);
+fprintf('Tempo de acomodacao: %.4g s\n', info_P.SettlingTime);
+fprintf('Sobressinal        : %.4g %%\n', info_P.Overshoot);
+fprintf('Ganho DC (erro reg): %.4g\n', dcgain(MF_p));
+
+figure;
+rlocus(MA_sc,'b'); hold on
+rlocus(MA_p,'r'); zgrid
+legend('Sem Controle','Proporcional')
+title('Lugar das Raízes - Proporcional')
+hold off
+
+figure; margin(MA_p); grid on; title('Bode - Proporcional (com margens)')
+figure; nyquist(MA_sc,'b',MA_p,'r'); grid on
+legend('Sem Controle','Proporcional'); title('Nyquist - Comparação')
+figure; nichols(MA_sc,'b',MA_p,'r'); ngrid
+legend('Sem Controle','Proporcional'); title('Nichols - Comparação')
+end
+
+%% =============================================================
+%%   SISTEMA 3 - AVANÇO DE FASE (LEAD)
+%% =============================================================
+if false
+disp(' '); disp('### SISTEMA 3 - AVANÇO DE FASE ###');
+
+zc = 0.85;     pc = -0.85;    Kc = 150;
+zc_2 = 0.80;   pc_2 = 0.99;   Kc_2 = 1;
+
+Clead = tf(Kc*[1 -zc], [1 -pc], T);
+leg   = tf(Kc_2*[1 -zc_2], [1 -pc_2], T);
+
+fprintf('AVANÇO -> freq zero = %.4g rad/s | freq polo = %.4g rad/s\n', ...
+        abs(log(zc))/T, abs(log(pc))/T);
+fprintf('Ganho DC: D_avanço(1) = %.4g | D_atraso(1) = %.4g\n', ...
+        dcgain(Clead), dcgain(leg));
+
+MA_AA = Clead * G;
+MF_AA = feedback(MA_AA, 1);
+
+disp('Compensador de avanço C(z):'); zpk(Clead)
+
+figure;
+rlocus(MA_sc, 'b'); hold on
+rlocus(MA_AA, 'r'); zgrid
+legend('Sem Controle','Avanço')
+title('Lugar das Raízes - Sem Controle vs Avanço')
+hold off
+
+figure;
+step(MA_sc, 'b'); hold on
+step(MF_AA, 'r')
+plot(tempo, Vo/ref, 'm')
+yline(ref,'--k'); grid on
+legend('Sem Controle','Avanço MF','Vo Medido')
+title('Resposta ao Degrau - Sem Controle vs Avanço')
+hold off
+
+figure; pzmap(MF_AA); grid on; title('Polos e Zeros - Avanço')
+figure; margin(MA_AA); grid on; title('Bode - Avanço (com margens)')
+figure; nyquist(MA_sc,'b',MA_AA,'r'); grid on
+legend('Sem Controle','Avanço'); title('Nyquist - Comparação')
+figure; nichols(MA_sc,'b',MA_AA,'r'); ngrid
+legend('Sem Controle','Avanço'); title('Nichols - Comparação')
+end
+
+%% =============================================================
+%%   SISTEMA 4 - PI   (rastreia 50%, superamortecido)
+%% =============================================================
+if false
+disp(' '); disp('### SISTEMA 4 - PI ###');
+
+zc = 0.935;   Kc = 0.21;
+C_PI = Kc * tf([1 -zc],[1 -1], T);
+
+Kp = Kc * zc;             Ki = Kc*(1 - zc) / T;
+fprintf('Parte Proporcional  Kp = %.4g\n', Kp);
+fprintf('Parte Integral      Ki = %.4g\n', Ki);
+
+MA_PI = C_PI*G;
+MF_PI = feedback(MA_PI,1);
+
+disp('--- zpk ---'); zpk(C_PI)
+
+figure;
+step(MA_sc,'b'); hold on
+step(MF_PI,'r')
+plot(tempo,Vo/ref,'m')
+grid on
+legend('Sem Controle','PI','Vo Medido')
+title('Resposta ao Degrau - PI')
+hold off
+
+info_PI = stepinfo(MF_PI);
+disp('### DESEMPENHO PI ###');
+fprintf('Tempo de subida    : %.4g s\n', info_PI.RiseTime);
+fprintf('Tempo de acomodacao: %.4g s\n', info_PI.SettlingTime);
+fprintf('Sobressinal        : %.4g %%\n', info_PI.Overshoot);
+fprintf('Valor de pico      : %.4g\n', info_PI.Peak);
+
+figure;
+rlocus(MA_sc,'b'); hold on
+rlocus(MA_PI,'r'); zgrid
+legend('Sem Controle','PI')
+title('Lugar das Raízes - PI')
+hold off
+
+figure; pzmap(MF_PI); grid on; title('Polos e Zeros - PI')
+figure; margin(MA_PI); grid on; title('Bode - PI (com margens)')
+figure; nyquist(MA_sc,'b',MA_PI,'r'); grid on
+legend('Sem Controle','PI'); title('Nyquist - Comparação')
+figure; nichols(MA_sc,'b',MA_PI,'r'); ngrid
+legend('Sem Controle','PI'); title('Nichols - Comparação')
+
+[Gm, Pm, Wcg, Wcp] = margin(MA_PI);
+disp('### MARGENS - PI ###');
+fprintf('Margem de Ganho : %.4g (%.4g dB)\n', Gm,20*log10(Gm));
+fprintf('Margem de Fase  : %.4g graus\n', Pm);
+damp(MF_PI)
+end
+
+%% =============================================================
+%%   SISTEMA 5 - AVANÇO + PI   (ts~1.4s, OS~2.75%)
+%% =============================================================
+if false
+disp(' '); disp('### SISTEMA 5 - AVANÇO + PI ###');
+
+zc_av = 0.90;    pc_av = 0.0;    Kc_av = 5;
+Clead = tf(Kc_av*[1 -zc_av], [1 -pc_av], T);
+MA_AA = Clead * G;
+
+zc = 0.95;       Kc = 2.95;
+C_PI = Kc * tf([1 -zc],[1 -1], T);
+
+Kp = Kc * zc;    Ki = Kc*(1 - zc) / T;
+fprintf('(estágio PI isolado) Kp = %.4g | Ki = %.4g\n', Kp, Ki);
+
+MA_PI = C_PI*MA_AA;
+MF_PI = feedback(MA_PI,1);
+
+disp('Controlador total (Avanço * PI):'); zpk(Clead * C_PI)
+
+figure;
+step(MA_sc,'b'); hold on
+step(MF_PI,'r')
+plot(tempo,Vo/ref,'m')
+grid on
+legend('Sem Controle','Avanço+PI','Vo Medido')
+title('Resposta ao Degrau - Avanço + PI')
+hold off
+
+info_PI = stepinfo(MF_PI);
+disp('### DESEMPENHO AVANÇO + PI ###');
+fprintf('Tempo de subida    : %.4g s\n', info_PI.RiseTime);
+fprintf('Tempo de acomodacao: %.4g s\n', info_PI.SettlingTime);
+fprintf('Sobressinal        : %.4g %%\n', info_PI.Overshoot);
+
+figure;
+rlocus(MA_sc,'b'); hold on
+rlocus(MA_PI,'r'); zgrid
+legend('Sem Controle','Avanço+PI')
+title('Lugar das Raízes - Avanço+PI')
+hold off
+
+figure; pzmap(MF_PI); grid on; title('Polos e Zeros - Avanço+PI')
+figure; margin(MA_PI); grid on; title('Bode - Avanço+PI (com margens)')
+figure; nyquist(MA_sc,'b',MA_PI,'r'); grid on
+legend('Sem Controle','Avanço+PI'); title('Nyquist - Comparação')
+figure; nichols(MA_sc,'b',MA_PI,'r'); ngrid
+legend('Sem Controle','Avanço+PI'); title('Nichols - Comparação')
+end
+
+%% =============================================================
+%%   SISTEMA 6 - PID   (META: ts~1s, OS~0.2%)
+%% =============================================================
+if false
+disp(' '); disp('### SISTEMA 6 - PID ###');
+
+Kp = 0.10;   Ki = 6.20;   Kd = 0.06;
+
+Cp = tf(Kp, 1, T);
+Ci = tf(Ki*T, [1 -1], T);
+Cd = tf(Kd/T*[1 -1], [1 0], T);
+C_PID = Cp + Ci + Cd;
+
+MA_PID = C_PID*G;
+MF_PID = feedback(MA_PID,1);
+
+disp('--- zpk ---'); zpk(C_PID)
+
+figure;
+step(MA_sc,'b'); hold on
+step(MF_PID,'r')
+plot(tempo,Vo/ref,'m')
+grid on
+legend('Sem Controle','PID','Vo Medido')
+title('Resposta ao Degrau - PID')
+hold off
+
+info_PID = stepinfo(MF_PID);
+disp('### DESEMPENHO PID ###');
+fprintf('Tempo de subida    : %.4g s\n', info_PID.RiseTime);
+fprintf('Tempo de acomodacao: %.4g s\n', info_PID.SettlingTime);
+fprintf('Sobressinal        : %.4g %%\n', info_PID.Overshoot);
+fprintf('Valor de pico      : %.4g\n', info_PID.Peak);
+
+figure;
+rlocus(MA_sc,'b'); hold on
+rlocus(MA_PID,'r'); zgrid
+legend('Sem Controle','PID')
+title('Lugar das Raízes - PID')
+hold off
+
+figure; pzmap(MF_PID); grid on; title('Polos e Zeros - PID')
+figure; margin(MA_PID); grid on; title('Bode - PID (com margens)')
+figure; nyquist(MA_sc,'b',MA_PID,'r'); grid on
+legend('Sem Controle','PID'); title('Nyquist - Comparação')
+figure; nichols(MA_sc,'b',MA_PID,'r'); ngrid
+legend('Sem Controle','PID'); title('Nichols - Comparação')
+
+[Gm, Pm, Wcg, Wcp] = margin(MA_PID);
+disp('### MARGENS - PID ###');
+fprintf('Margem de Ganho : %.4g (%.4g dB)\n', Gm,20*log10(Gm));
+fprintf('Margem de Fase  : %.4g graus\n', Pm);
+damp(MF_PID)
+end
+
+%% =============================================================
+%%   SISTEMA 7 - COMPARAÇÃO DE TODOS OS CONTROLADORES
+%% =============================================================
+if true
+disp(' ');
+disp('############################################################');
+disp('###   COMPARAÇÃO GERAL - TODOS OS CONTROLADORES          ###');
+disp('############################################################');
+
+% --- (1) PROPORCIONAL ---
+Kp_P = 1.53;                 % rastreia ~50% (P puro: OS alto, sem solução melhor)
+C_P  = Kp_P;
+MA_P = C_P*G;
+MF_P = feedback(C_P*G, 1);
+
+% --- (2) AVANÇO ---
+zc_av = 0.85;  pc_av = -0.85;  Kc_av = 150;   % mantido (avanço puro: demonstra limitação)
+C_AV  = tf(Kc_av*[1 -zc_av], [1 -pc_av], T);
+MF_AV = feedback(C_AV*G, 1);
+
+% --- (3) PI ROBUSTO ---  OS=0.9% ts~5.3s MG=6dB MF=96°
+zc_pi = 0.925;  Kc_pi = 0.20;
+C_PI  = Kc_pi * tf([1 -zc_pi],[1 -1], T);
+MF_PI = feedback(C_PI*G, 1);
+
+% --- (4) AVANÇO + PI ROBUSTO ---  OS=0% ts~3s MG=34dB MF=39°
+zc_av2 = 0.90;  pc_av2 = 0.30;  Kc_av2 = 2;
+C_lead = tf(Kc_av2*[1 -zc_av2], [1 -pc_av2], T);
+zc_pi2 = 0.95;  Kc_pi2 = 1.90;
+C_pi2  = Kc_pi2 * tf([1 -zc_pi2],[1 -1], T);
+MF_AVPI = feedback(C_pi2*C_lead*G, 1);
+
+% --- (5) PID ROBUSTO ---  OS=0% ts~2.95s MG=40dB MF=97° (MELHOR)
+Kp_pid = 0.25;  Ki_pid = 2.25;  Kd_pid = 0.025;
+Cp = tf(Kp_pid, 1, T);
+Ci = tf(Ki_pid*T, [1 -1], T);
+Cd = tf(Kd_pid/T*[1 -1], [1 0], T);
+C_PID  = Cp + Ci + Cd;
+MF_PID = feedback(C_PID*G, 1);
+
+% Listas para iterar
+sistemas = {MA_sc, MF_P, MF_AV, MF_PI, MF_AVPI, MF_PID};
+nomes    = {'Sem Controle','Proporcional','Avanço','PI','Avanço+PI','PID'};
+cores    = {'k','b','g','c',[0.8 0.5 0],'r'};
+MA_list  = {G, C_P*G, C_AV*G, C_PI*G, C_pi2*C_lead*G, C_PID*G};
+
+% =============================================================
+%   GRÁFICO 1 - RESPOSTA AO DEGRAU (todos juntos)
+% =============================================================
+figure('Name','Comparação - Resposta ao Degrau'); hold on
+for i = 1:length(sistemas)
+    [y, t] = step(ref*sistemas{i});
+    plot(t, y, 'Color', cores{i}, 'LineWidth', 1.4)
+end
+plot(tempo, Vo, 'm--', 'LineWidth', 1.0)
+yline(ref,'--k')
+grid on
+legend([nomes, {'Vo Medido','Referência'}], 'Location','best')
+xlabel('Tempo (s)'); ylabel('Amplitude (0-1000)')
+title('Comparação - Resposta ao Degrau (todos os controladores)')
+xlim([0 6])
+hold off
+
+% =============================================================
+%   GRÁFICO 2 - LUGAR DAS RAÍZES
+% =============================================================
+figure('Name','Comparação - Lugar das Raízes'); hold on
+for i = 1:length(MA_list)
+    rlocus(MA_list{i})
+    h = findobj(gca,'Type','line'); set(h(1),'Color',cores{i});
+end
+zgrid
+legend(nomes, 'Location','best')
+title('Comparação - Lugar das Raízes')
+hold off
+
+% =============================================================
+%   GRÁFICO 3 - BODE comparativo
+% =============================================================
+figure('Name','Comparação - Bode');
+bode(G,'k', C_P*G,'b', C_AV*G,'g', C_PI*G,'c', C_pi2*C_lead*G,'r', C_PID*G,'m')
+grid on
+legend(nomes, 'Location','best')
+title('Comparação - Bode')
+
+% =============================================================
+%   TABELA DE DESEMPENHO
+% =============================================================
+disp(' ');
+disp('### TABELA COMPARATIVA DE DESEMPENHO ###');
+fprintf('%-14s %10s %10s %10s %10s\n', ...
+        'Controlador','RiseT(s)','SettleT(s)','OS(%)','GanhoDC');
+fprintf('%s\n', repmat('-',1,58));
+for i = 1:length(sistemas)
+    info = stepinfo(sistemas{i});
+    gdc  = dcgain(sistemas{i});
+    fprintf('%-14s %10.4g %10.4g %10.4g %10.4g\n', ...
+            nomes{i}, info.RiseTime, info.SettlingTime, ...
+            info.Overshoot, gdc);
+end
+fprintf('%s\n', repmat('-',1,58));
+disp('Obs: GanhoDC = 1 indica rastreamento perfeito (erro zero).');
+disp('     P e Avanço têm GanhoDC < 1 (erro de regime).');
+% =============================================================
+%   GRÁFICO 4 - PZMAP (polos e zeros de malha fechada)
+% =============================================================
+figure('Name','Comparação - PZmap'); hold on
+for i = 1:length(sistemas)
+    pzmap(sistemas{i});
+    % colore os objetos criados nesta iteração (mantém x e o nativos)
+    hp = findobj(gca, 'Type', 'line');
+    set(hp(1:min(2,end)), 'Color', cores{i});
+end
+zgrid
+legend(nomes, 'Location','best')
+title('Comparação - Polos e Zeros de Malha Fechada')
+hold off
+end
+
+dados = readtable('PID.csv');
+tempo = dados.tempo;
+Vo    = dados.Vo;
+
+% Acha o primeiro valor diferente de zero e corta tudo antes
+idx = find(Vo ~= 0, 1);        % índice do primeiro Vo diferente de 0
+tempo = tempo(idx:end);
+Vo    = Vo(idx:end);
+
+% Zera o tempo no novo início
+tempo = tempo - tempo(1);
+
+figure;
+%%step(ref*C_PI, 'b'); hold on
+step(ref*MF_PID, 'C'); hold on
+plot(tempo, Vo, 'm', 'LineWidth', 1.2)
+yline(ref,'--k'); grid on
+%legend('Proporcional A','Proporcional F','Vo (CSV)','Referência')
+legend('Proporcional F','Vo (CSV)','Referência')
+title('Proporcional vs Vo Medido (CSV)')
+hold off
+
+%% =============================================================
+%%   SISTEMA 8 - DEAD-BEAT (suavizado / Dahlin) - ts ~ 1s
+%% =============================================================
+if true
+disp(' '); disp('### SISTEMA 8 - DEAD-BEAT (ts ~ 1s) ###');
+
+% --- Projeto: malha fechada = 1a ordem com ts desejado ---
+ts_des = 1.0;                  % tempo de acomodação desejado (s)
+tau    = ts_des/4;             % constante de tempo (ts ~ 4*tau)
+q      = exp(-T/tau);          % polo desejado de malha fechada
+
+% Resposta de malha fechada desejada: T_d(z) = (1-q)/(z-q)
+Td = tf([1-q], [1 -q], T);
+
+% Controlador: D(z) = T_d / [G*(1 - T_d)]
+C_DB = minreal(Td / (G*(1 - Td)));
+
+MA_DB = C_DB*G;
+MF_DB = feedback(MA_DB, 1);
+
+disp('Controlador Dead-Beat (Dahlin) D(z):'); zpk(C_DB)
+fprintf('Polo de malha fechada desejado q = %.4f\n', q);
+disp('Ganho DC malha fechada:'); disp(dcgain(MF_DB))
+
+% --- Resposta ao degrau ---
+figure;
+step(MA_sc*ref,'b'); hold on
+step(MF_DB*ref,'r'); hold on
+plot(tempo, Vo, 'm')
+yline(ref,'--k'); grid on
+legend('Sem Controle','Dead-Beat','Vo Medido')
+title('Resposta ao Degrau - Dead-Beat (ts~1s)')
+xlim([0 3])
+hold off
+
+% --- Desempenho ---
+info_DB = stepinfo(MF_DB);
+disp('### DESEMPENHO DEAD-BEAT ###');
+fprintf('Tempo de subida    : %.4g s\n', info_DB.RiseTime);
+fprintf('Tempo de acomodacao: %.4g s\n', info_DB.SettlingTime);
+fprintf('Sobressinal        : %.4g %%\n', info_DB.Overshoot);
+
+% --- Polos/zeros e frequência ---
+figure; pzmap(MF_DB); grid on; title('Polos e Zeros - Dead-Beat')
+figure; margin(MA_DB); grid on; title('Bode - Dead-Beat (com margens)')
+figure; nyquist(MA_sc,'b',MA_DB,'r'); grid on
+legend('Sem Controle','Dead-Beat'); title('Nyquist - Comparação')
+figure; nichols(MA_sc,'b',MA_DB,'r'); ngrid
+legend('Sem Controle','Dead-Beat'); title('Nichols - Comparação')
+end

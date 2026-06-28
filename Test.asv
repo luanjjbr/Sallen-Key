@@ -1,0 +1,914 @@
+clc;
+clear;
+close all;
+
+%% #############################################################
+%%   PARÂMETROS GERAIS
+%% #############################################################
+k   = 0.652;
+T   = 10e-3;
+ksi = 0.0839;
+N   = 61;
+ref     = 500;
+ref_2     = 500;
+escala  = 1;
+Tstep   = 10;
+
+%% #############################################################
+%%   1. LEITURA DOS DADOS E MONTAGEM DA PLANTA
+%% #############################################################
+dados = readtable('Vo.csv');
+tempo = dados.tempo;
+Vo = dados.Vo;
+tempo = tempo - tempo(1);
+
+wn  = 2*pi/(N*T);
+num = k * wn^2;
+den = [1, 2*ksi*wn, wn^2];
+
+sysCont = tf(num, den);
+G=c2d(sysCont, T, 'zoh');
+z= tf('z', T);
+
+% --- Sinal bruto ---
+figure('Name','Dados experimentais');
+plot(tempo, Vo); grid on;
+xlabel('Tempo (s)'); ylabel('Vo (0-1000)');
+title('Sinal Vo Original Extraído do Arduino');
+
+% --- Comparação modelo x real ---
+t_sim  = (0:length(Vo)-1)' * T;
+u = ones(length(Vo),1) * ref;
+yModel = lsim(G, u, t_sim);
+
+figure('Name','Modelo x Real');
+plot(t_sim, Vo,     'r', 'LineWidth', 1.5); hold on;
+plot(t_sim, yModel, 'b', 'LineWidth', 1.5); grid on;
+xlabel('Tempo (s)'); ylabel('Amplitude (0-1000)');
+legend('Vo Medido','Modelo Discreto','Location','best');
+title('Comparação: Vo Real vs Modelo Discreto');
+
+%% =============================================================
+%%   SISTEMA 1 - SEM CONTROLE
+%% =============================================================
+disp(' '); disp('### SISTEMA 1 - SEM CONTROLE ###');
+disp(' '); disp('sysCont');
+disp('--- zpk ---');   zpk(sysCont)
+% disp('--- tf ---');    tf(sysCont)
+% disp('--- ss ---');    ss(sysCont)
+% disp('--- polos ---'); pole(sysCont)
+% disp('--- zeros ---'); zero(sysCont)
+% disp('--- damp ---');  damp(sysCont)
+disp(' '); disp('G');
+disp('--- zpk ---'); zpk(G)
+% disp('--- tf ---');  tf(G)
+% disp('--- ss ---');  ss(G)
+% disp('--- polos ---'); pole(G)
+% disp('--- zeros ---'); zero(G)
+% disp('--- damp ---'); damp(G)
+
+
+%% =============================================================
+%%   SISTEMA 1 - SEM CONTROLE  (gráficos)
+%% =============================================================
+% Malha aberta = G | Malha fechada = feedback(G,1)
+MA_sc = G;
+MF_sc = feedback(G, 1);
+
+% figure;
+% rlocus(MA_sc, 'b')   % azul
+% hold on
+% rlocus(MF_sc, 'r')   % vermelho
+% zgrid
+% title('Lugar das Raízes')
+% legend('Malha Aberta','Malha Fechada')
+% hold off
+
+figure;
+rlocus(G)            % lugar das raízes da malha aberta G(z)
+zgrid                % adiciona linhas de ksi e wn constantes no plano z
+title('Lugar das Raízes')
+
+
+
+% figure;
+% nyquist(MA_sc,'b')
+% hold on
+% nyquist(MF_sc,'r')
+% grid on
+% title('Diagrama de Nyquist - G(z)')
+% legend('Malha Aberta','Malha Fechada')
+% hold off
+
+figure;
+nyquist(MA_sc)
+grid on
+title('Diagrama de Nyquist - G(z)')
+
+% figure;
+% nichols(MA_sc)
+% hold on
+% nichols(MF_sc)
+% ngrid
+% grid on
+% title('Carta de Nichols - G(z)')
+% legend('Malha Aberta','Malha Fechada')
+% hold off
+
+figure;
+nichols(MA_sc)
+ngrid
+grid on
+title('Carta de Nichols - G(z)')
+
+figure;
+bode(G)
+grid on
+title('Diagrama de Bode - G(z)')
+
+[Gm, Pm, Wcg, Wcp] = margin(G)
+% Gm  = margem de ganho (em valor absoluto; em dB = 20*log10(Gm))
+% Pm  = margem de fase (graus)
+% Wcg = frequência de cruzamento de ganho (onde fase = -180°)
+% Wcp = frequência de cruzamento de fase (onde ganho = 0 dB)
+
+if false
+%% =============================================================
+%%   SISTEMA 2 - proporcional
+%% =============================================================
+Kp = 1.53;                      % ganho proporcional (ajuste este valor)
+C  = Kp;                     % controlador proporcional
+
+MA_p = C * G;                % malha aberta com controle
+MF_p = feedback(C*G, 1);     % malha fechada com realimentação unitária
+
+figure;
+step(MA_sc)              % sem controle (malha fechada da planta)
+hold on
+step(MA_p)               % com controle proporcional
+plot(tempo, Vo/ref, 'm')     % sinal real medido (Vo do Arduino)
+grid on
+legend('Sem Controle','Proporcional','Vo Medido')
+title('Resposta ao Degrau - Com e Sem Controle')
+hold off
+
+% figure;
+% rlocus(MA_sc)            % lugar das raízes da malha aberta G(z)
+% zgrid                % adiciona linhas de ksi e wn constantes no plano z
+% title('Lugar das Raízes')
+% % --- Bode com margens ---
+% figure;
+% margin(MA_p)             % Bode marcando MG e MF do sistema com Kp
+% grid on
+% title('Diagrama de Bode - Proporcional')
+% 
+% [Gm, Pm, Wcg, Wcp] = margin(MA_p);
+% disp(' '); disp('### MARGENS - PROPORCIONAL ###');
+% fprintf('Margem de Ganho : %.4g  (%.4g dB)\n', Gm, 20*log10(Gm));
+% fprintf('Margem de Fase  : %.4g graus\n', Pm);
+% fprintf('Wcg (fase=-180) : %.4g rad/s\n', Wcg);
+% fprintf('Wcp (ganho=0dB) : %.4g rad/s\n', Wcp);
+% 
+% % --- Nyquist ---
+% figure;
+% nyquist(MA_p)
+% grid on
+% title('Diagrama de Nyquist - Proporcional')
+% 
+% % --- Nichols ---
+% figure;
+% nichols(MA_p)
+% ngrid
+% title('Carta de Nichols - Proporcional')
+
+% --- Bode comparativo ---
+figure;
+bode(MA_sc, 'b', MA_p, 'r')
+grid on
+legend('Sem Controle','Proporcional')
+title('Bode - Comparação')
+
+% --- Nyquist comparativo ---
+figure;
+nyquist(MA_sc, 'b', MA_p, 'r')
+grid on
+legend('Sem Controle','Proporcional')
+title('Nyquist - Comparação')
+
+% --- Nichols comparativo ---
+figure;
+nichols(MA_sc, 'b', MA_p, 'r')
+ngrid
+legend('Sem Controle','Proporcional')
+title('Nichols - Comparação')
+end
+
+
+if true
+%% =============================================================
+%%   SISTEMA 3 - AVANÇO DE FASE (LEAD) - polo e zero manuais
+%% =============================================================
+disp(' '); disp('### SISTEMA 3 - AVANÇO DE FASE (manual) ###');
+
+% --- Você escolhe zero, polo e ganho do compensador ---
+% AVANÇO (lead): zero em frequência mais baixa que o polo (zc mais perto de 1)
+zc = 0.85;     % zero do compensador de avanço
+pc = -0.85;      % polo do compensador de avanço
+Kc = 150;     % ganho do avanço (ajuste para mover o lugar das raízes)
+
+% ATRASO (lag): zero em frequência mais alta que o polo (pc mais perto de 1)
+zc_2 = 0.80;   % zero do compensador de atraso
+pc_2 = 0.99;   % polo do compensador de atraso
+Kc_2 = 1;      % ganho do atraso
+
+% --- Compensadores no estilo Aguirre: D(z) = K*(z - z0)/(z - zp) ---
+% Avanço (Clead)
+num_lead = Kc*[1  -zc];        % Kc*(z - zc)
+den_lead = [1  -pc];           % (z - pc)
+Clead = tf(num_lead, den_lead, T);
+
+% Atraso (leg)
+num_lag = Kc_2*[1  -zc_2];     % Kc_2*(z - zc_2)
+den_lag = [1  -pc_2];          % (z - pc_2)
+leg = tf(num_lag, den_lag, T);
+
+% --- Frequências do zero e do polo (interpretação do livro) ---
+fprintf('AVANÇO -> freq zero = %.4g rad/s | freq polo = %.4g rad/s\n', ...
+        abs(log(zc))/T, abs(log(pc))/T);
+fprintf('ATRASO -> freq zero = %.4g rad/s | freq polo = %.4g rad/s\n', ...
+        abs(log(zc_2))/T, abs(log(pc_2))/T);
+fprintf('Ganho DC: D_avanço(1) = %.4g | D_atraso(1) = %.4g\n', ...
+        dcgain(Clead), dcgain(leg));
+
+% --- Montagem da malha (descomente a opção desejada) ---
+MA_AA = Clead * G;             % malha aberta com avanço
+% MA_AA = leg * G;             % malha aberta com atraso
+% MA_AA = leg * Clead * G;     % malha aberta com avanço-atraso
+MF_AA = feedback(MA_AA, 1);    % malha fechada
+
+disp('Compensador de avanço C(z):'); zpk(Clead)
+
+% --- Lugar das raízes: sem controle vs avanço ---
+figure;
+rlocus(MA_sc, 'b'); hold on
+rlocus(MA_AA, 'r'); hold on
+%rlocus(MF_AA, 'c')
+zgrid
+%legend('Sem Controle','Avanço MA','Avanço MF')
+legend('Sem Controle','Avanço')
+title('Lugar das Raízes - Sem Controle vs Avanço')
+hold off
+
+% --- Resposta ao degrau: sem controle vs avanço + Vo real ---
+figure;
+step(MA_sc, 'b'); hold on
+%step(MA_AA, 'r'); hold on
+step(MF_AA, 'C'); hold on
+plot(tempo, Vo/ref, 'm')
+yline(ref,'--k'); grid on
+%legend('Sem Controle','Avanço MA','Avanço MF','Vo Medido')
+legend('Sem Controle','Avanço MF','Vo Medido')
+title('Resposta ao Degrau - Sem Controle vs Avanço')
+
+hold off
+figure;
+pzmap(MF_AA)         % marca os polos/zeros de malha fechada com x e o
+grid on
+title('Polos e Zeros - Malha Fechada')
+end
+
+if false
+% --- Bode comparativo ---
+figure;
+margin(MA_AA); grid on
+title('Bode - Avanço (com margens)')
+
+figure;
+bode(MA_sc, 'b', MA_AA, 'r'); grid on
+legend('Sem Controle','Avanço')
+title('Bode - Sem Controle vs Avanço')
+
+% --- Nyquist comparativo ---
+figure;
+nyquist(MA_sc, 'b', MA_AA, 'r'); grid on
+legend('Sem Controle','Avanço')
+title('Nyquist - Sem Controle vs Avanço')
+
+% --- Nichols comparativo ---
+figure;
+nichols(MA_sc, 'b', MA_AA, 'r'); ngrid
+legend('Sem Controle','Avanço')
+title('Nichols - Sem Controle vs Avanço')
+
+% --- Margens numéricas do avanço ---
+[Gm, Pm, Wcg, Wcp] = margin(MA_AA);
+disp(' '); disp('### MARGENS - AVANÇO ###');
+fprintf('Margem de Ganho : %.4g  (%.4g dB)\n', Gm, 20*log10(Gm));
+fprintf('Margem de Fase  : %.4g graus\n', Pm);
+fprintf('Wcg : %.4g rad/s | Wcp : %.4g rad/s\n', Wcg, Wcp);
+
+% --- Verificação de estabilidade ---
+disp('Ganho DC malha fechada (avanço):'); disp(dcgain(MF_AA));
+damp(MF_AA)
+
+% --- Bode comparativo ---
+figure;
+bode(MA_sc, 'b', MA_AA, 'r')
+grid on
+legend('Sem Controle','Avanço')
+title('Bode - Comparação')
+
+% --- Nyquist comparativo ---
+figure;
+nyquist(MA_sc, 'b', MA_AA, 'r')
+grid on
+legend('Sem Controle','Avanço')
+title('Nyquist - Comparação')
+
+% --- Nichols comparativo ---
+figure;
+nichols(MA_sc, 'b', MA_AA, 'r')
+ngrid
+legend('Sem Controle','Avanço')
+title('Nichols - Comparação')
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+if false
+% --- Parâmetros fixos do compensador ---
+zc = 0.9;      % zero do avanço
+pc = -0.9;     % polo do avanço
+
+% --- ATRASO (caso use) ---
+zc_2 = 0.80;   pc_2 = 0.99;   Kc_2 = 1;
+num_lag = Kc_2*[1  -zc_2];   den_lag = [1  -pc_2];
+leg = tf(num_lag, den_lag, T);
+
+% --- LOOP: varre Kc de N até N2 com passo N1 ---
+N  = 50;        % valor inicial de Kc
+N1 = 20;        % passo
+N2 = 150;       % valor máximo de Kc
+Kc_vec = N:N1:N2;
+
+% Cores diferentes para cada Kc
+cores = lines(length(Kc_vec));
+
+% ==================== LUGAR DAS RAÍZES ====================
+figure; hold on
+rlocus(MA_sc, 'k')                          % sem controle (preto)
+legendas = {'Sem Controle'};
+
+for i = 1:length(Kc_vec)
+    Kc = Kc_vec(i);
+    num_lead = Kc*[1  -zc];
+    den_lead = [1  -pc];
+    Clead = tf(num_lead, den_lead, T);
+
+    MA_AA = Clead * G;                      % avanço
+    % MA_AA = leg * Clead * G;              % avanço-atraso (descomente)
+
+    rlocus(MA_AA)
+    h = findobj(gca,'Type','line'); set(h(1),'Color',cores(i,:));
+    legendas{end+1} = sprintf('Kc = %.2g', Kc);
+end
+zgrid
+legend(legendas, 'Location','best')
+title('Lugar das Raízes - Varredura de Kc')
+hold off
+
+% ==================== RESPOSTA AO DEGRAU ====================
+figure; hold on
+
+% sem controle
+[y_sc, t_sc] = step(MA_sc);
+plot(t_sc, y_sc, 'k', 'LineWidth', 1.2)
+legendas2 = {'Sem Controle'};
+
+for i = 1:length(Kc_vec)
+    Kc = Kc_vec(i);
+    num_lead = Kc*[1  -zc];
+    den_lead = [1  -pc];
+    Clead = tf(num_lead, den_lead, T);
+
+    MA_AA = Clead * G;                      % avanço
+    % MA_AA = leg * Clead * G;              % avanço-atraso (descomente)
+    MF_AA = feedback(MA_AA, 1);
+
+    [y_AA, t_AA] = step(MF_AA);
+    plot(t_AA, y_AA, 'Color', cores(i,:), 'LineWidth', 1.2)
+    legendas2{end+1} = sprintf('Kc = %.2g', Kc);
+end
+
+plot(tempo, Vo/500, 'm--')              % Vo real
+legendas2{end+1} = 'Vo Medido';
+grid on
+legend(legendas2, 'Location','best')
+title('Resposta ao Degrau - Varredura de Kc (N a N2)')
+hold off
+
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+if false
+%% =============================================================
+%%   SISTEMA 4 - PI
+%% =============================================================
+disp(' ');
+disp('### SISTEMA 4 - PI ###');
+
+% --- Você escolhe o zero e o ganho ---
+zc = 0.99;       % zero do PI (entre 0 e 1, perto de 1 = mais suave)
+Kc = 0.5;          % ganho do PI (ajuste para mover o lugar das raízes)
+
+% Controlador PI: C(z) = Kc*(z - zc)/(z - 1)
+%   - polo fixo em z=1  -> integrador (rastreia referência, erro zero)
+%   - zero em zc        -> molda o transitório
+C_PI = Kc * tf([1 -zc],[1 -1], T);
+
+% --- Equivalência com a forma Kp + Ki (parte proporcional e integral) ---
+Kp = Kc * zc;             % parte PROPORCIONAL
+Ki = Kc*(1 - zc) / T;     % parte INTEGRAL
+fprintf('Parte Proporcional  Kp = %.4g\n', Kp);
+fprintf('Parte Integral      Ki = %.4g\n', Ki);
+
+% Malhas
+MA_PI = C_PI*G;
+% MA_PI = C_PI*MA_AA;
+MF_PI = feedback(MA_PI,1);
+
+disp(' ');
+disp('Controlador PI');
+disp('--- zpk ---');
+zpk(C_PI)
+
+%% =============================================================
+%%   RESPOSTA AO DEGRAU
+%% =============================================================
+
+figure;
+step(MA_sc,'b')
+hold on
+step(MF_PI,'r')
+plot(tempo,Vo/ref,'m')
+grid on
+legend('Sem Controle','PI','Vo Medido')
+title('Resposta ao Degrau - PI')
+hold off
+
+%% =============================================================
+%%   INFORMAÇÕES DA RESPOSTA
+%% =============================================================
+
+info_PI = stepinfo(MF_PI);
+
+disp(' ');
+disp('### DESEMPENHO PI ###');
+
+disp('Tempo de subida:')
+disp(info_PI.RiseTime)
+
+disp('Tempo de acomodacao:')
+disp(info_PI.SettlingTime)
+
+disp('Sobressinal (%):')
+disp(info_PI.Overshoot)
+
+disp('Valor de pico:')
+disp(info_PI.Peak)
+
+%% =============================================================
+%%   LUGAR DAS RAÍZES
+%% =============================================================
+
+figure;
+rlocus(MA_sc,'b')
+hold on
+rlocus(MA_PI,'r')
+zgrid
+legend('Sem Controle','PI')
+title('Lugar das Raízes - Comparação')
+hold off
+end
+
+if false
+%% =============================================================
+%%   POLOS E ZEROS
+%% =============================================================
+
+figure;
+pzmap(MF_PI)
+grid on
+title('Polos e Zeros - PI')
+
+%% =============================================================
+%%   BODE
+%% =============================================================
+
+figure;
+margin(MA_PI)
+grid on
+title('Bode - PI (com margens)')
+
+figure;
+bode(MA_sc,'b',MA_PI,'r')
+grid on
+legend('Sem Controle','PI')
+title('Bode - Comparação')
+
+%% =============================================================
+%%   NYQUIST
+%% =============================================================
+
+figure;
+nyquist(MA_sc,'b',MA_PI,'r')
+grid on
+legend('Sem Controle','PI')
+title('Nyquist - Comparação')
+
+%% =============================================================
+%%   NICHOLS
+%% =============================================================
+
+figure;
+nichols(MA_sc,'b',MA_PI,'r')
+ngrid
+grid on
+legend('Sem Controle','PI')
+title('Nichols - Comparação')
+
+%% =============================================================
+%%   MARGENS DE ESTABILIDADE
+%% =============================================================
+
+[Gm, Pm, Wcg, Wcp] = margin(MA_PI);
+
+disp(' ');
+disp('### MARGENS - PI ###');
+
+fprintf('Margem de Ganho : %.4g (%.4g dB)\n', ...
+        Gm,20*log10(Gm));
+
+fprintf('Margem de Fase  : %.4g graus\n', ...
+        Pm);
+
+fprintf('Wcg (fase=-180°) : %.4g rad/s\n', ...
+        Wcg);
+
+fprintf('Wcp (ganho=0 dB) : %.4g rad/s\n', ...
+        Wcp);
+
+%% =============================================================
+%%   VERIFICAÇÃO DE ESTABILIDADE
+%% =============================================================
+
+disp(' ');
+disp('### POLOS DE MALHA FECHADA ###');
+
+pole(MF_PI)
+
+disp(' ');
+disp('### AMORTECIMENTO ###');
+
+damp(MF_PI)
+end
+
+
+
+
+
+
+
+
+
+
+
+
+if false
+%% =============================================================
+%%   SISTEMA 5 - AVANÇO + PI
+%% =============================================================
+disp(' ');
+disp('### SISTEMA 5 - AVANÇO + PI ###');
+
+% -------------------------------------------------------------
+% ESTÁGIO 1 - COMPENSADOR DE AVANÇO (autossuficiente)
+% -------------------------------------------------------------
+% Definido aqui dentro para o bloco não depender de MA_AA externo.
+zc_av = 0.85;    % zero do avanço
+pc_av = -0.85;   % polo do avanço
+Kc_av = 150;     % ganho do avanço
+
+Clead = tf(Kc_av*[1 -zc_av], [1 -pc_av], T);   % Kc*(z - zc)/(z - pc)
+MA_AA = Clead * G;                              % malha aberta com avanço
+
+% -------------------------------------------------------------
+% ESTÁGIO 2 - PI
+% -------------------------------------------------------------
+% --- Você escolhe o zero e o ganho do PI ---
+zc = 0.99;       % zero do PI (entre 0 e 1, perto de 1 = mais suave)
+Kc = 0.895;      % ganho do PI (ajuste para mover o lugar das raízes)
+
+% Controlador PI: C(z) = Kc*(z - zc)/(z - 1)
+%   - polo fixo em z=1  -> integrador (rastreia referência, erro zero)
+%   - zero em zc        -> molda o transitório
+C_PI = Kc * tf([1 -zc],[1 -1], T);
+
+% --- Equivalência com a forma Kp + Ki (somente do estágio PI) ---
+Kp = Kc * zc;             % parte PROPORCIONAL do PI
+Ki = Kc*(1 - zc) / T;     % parte INTEGRAL do PI
+fprintf('(valores do estágio PI isolado)\n');
+fprintf('Parte Proporcional  Kp = %.4g\n', Kp);
+fprintf('Parte Integral      Ki = %.4g\n', Ki);
+
+% -------------------------------------------------------------
+% MALHA: PI em cascata com o avanço e a planta
+% -------------------------------------------------------------
+% MA_PI = C_PI*G;          % só PI
+MA_PI = C_PI*MA_AA;        % AVANÇO + PI  (= C_PI * Clead * G)
+MF_PI = feedback(MA_PI,1);
+
+disp(' ');
+disp('Controlador total (Avanço * PI)');
+disp('--- zpk ---');
+zpk(Clead * C_PI)
+
+%% =============================================================
+%%   RESPOSTA AO DEGRAU
+%% =============================================================
+figure;
+step(MA_sc,'b')
+hold on
+step(MF_PI,'r')
+plot(tempo,Vo/ref,'m')
+grid on
+legend('Sem Controle','Avanço+PI','Vo Medido')
+title('Resposta ao Degrau - Avanço + PI')
+hold off
+
+%% =============================================================
+%%   INFORMAÇÕES DA RESPOSTA
+%% =============================================================
+info_PI = stepinfo(MF_PI);
+disp(' ');
+disp('### DESEMPENHO AVANÇO + PI ###');
+
+disp('Tempo de subida:')
+disp(info_PI.RiseTime)
+
+disp('Tempo de acomodacao:')
+disp(info_PI.SettlingTime)
+
+disp('Sobressinal (%):')
+disp(info_PI.Overshoot)
+
+disp('Valor de pico:')
+disp(info_PI.Peak)
+
+%% =============================================================
+%%   LUGAR DAS RAÍZES
+%% =============================================================
+figure;
+rlocus(MA_sc,'b')
+hold on
+rlocus(MA_PI,'r')
+zgrid
+legend('Sem Controle','Avanço+PI')
+title('Lugar das Raízes - Avanço+PI vs Sem Controle')
+hold off
+end
+
+if false
+%% =============================================================
+%%   POLOS E ZEROS
+%% =============================================================
+figure;
+pzmap(MF_PI)
+grid on
+title('Polos e Zeros - Avanço+PI')
+
+%% =============================================================
+%%   BODE
+%% =============================================================
+figure;
+margin(MA_PI)
+grid on
+title('Bode - Avanço+PI (com margens)')
+
+figure;
+bode(MA_sc,'b',MA_PI,'r')
+grid on
+legend('Sem Controle','Avanço+PI')
+title('Bode - Comparação')
+
+%% =============================================================
+%%   NYQUIST
+%% =============================================================
+figure;
+nyquist(MA_sc,'b',MA_PI,'r')
+grid on
+legend('Sem Controle','Avanço+PI')
+title('Nyquist - Comparação')
+
+%% =============================================================
+%%   NICHOLS
+%% =============================================================
+figure;
+nichols(MA_sc,'b',MA_PI,'r')
+ngrid
+grid on
+legend('Sem Controle','Avanço+PI')
+title('Nichols - Comparação')
+
+%% =============================================================
+%%   MARGENS DE ESTABILIDADE
+%% =============================================================
+[Gm, Pm, Wcg, Wcp] = margin(MA_PI);
+disp(' ');
+disp('### MARGENS - AVANÇO + PI ###');
+fprintf('Margem de Ganho : %.4g (%.4g dB)\n', Gm,20*log10(Gm));
+fprintf('Margem de Fase  : %.4g graus\n', Pm);
+fprintf('Wcg (fase=-180°) : %.4g rad/s\n', Wcg);
+fprintf('Wcp (ganho=0 dB) : %.4g rad/s\n', Wcp);
+
+%% =============================================================
+%%   VERIFICAÇÃO DE ESTABILIDADE
+%% =============================================================
+disp(' ');
+disp('### POLOS DE MALHA FECHADA ###');
+pole(MF_PI)
+
+disp(' ');
+disp('### AMORTECIMENTO ###');
+damp(MF_PI)
+end
+
+
+
+
+
+
+if true
+%% =============================================================
+%%   SISTEMA 6 - PID
+%% =============================================================
+disp(' ');
+disp('### SISTEMA 6 - PID ###');
+
+% --- Você ajusta os três ganhos ---
+% --- PID superamortecido ---
+Kp = 0.40;       % ganho proporcional
+Ki = 5.60;       % ganho integral
+Kd = 0.2;       % ganho derivativo
+
+% Controlador PID discreto (forma posicional, derivada/integral por Euler)
+%   C(z) = Kp + Ki*T/(z-1) + Kd/T*(z-1)/z
+%   - termo integral  -> polo em z=1 (rastreia referência, erro zero)
+%   - termo derivativo -> polo em z=0 (filtra/antecipação)
+Cp = tf(Kp, 1, T);                 % proporcional
+Ci = tf(Ki*T, [1 -1], T);          % integral  (Ki*T/(z-1))
+Cd = tf(Kd/T*[1 -1], [1 0], T);    % derivativo (Kd/T*(z-1)/z)
+C_PID = Cp + Ci + Cd;
+
+% Malhas
+MA_PID = C_PID*G;
+MF_PID = feedback(MA_PID,1);
+
+disp(' ');
+disp('Controlador PID');
+disp('--- zpk ---');
+zpk(C_PID)
+
+%% =============================================================
+%%   RESPOSTA AO DEGRAU
+%% =============================================================
+figure;
+step(MA_sc,'b')
+hold on
+step(MF_PID,'r')
+plot(tempo,Vo/ref,'m')
+grid on
+legend('Sem Controle','PID','Vo Medido')
+title('Resposta ao Degrau - PID')
+hold off
+
+%% =============================================================
+%%   INFORMAÇÕES DA RESPOSTA
+%% =============================================================
+info_PID = stepinfo(MF_PID);
+disp(' ');
+disp('### DESEMPENHO PID ###');
+
+disp('Tempo de subida:')
+disp(info_PID.RiseTime)
+
+disp('Tempo de acomodacao:')
+disp(info_PID.SettlingTime)
+
+disp('Sobressinal (%):')
+disp(info_PID.Overshoot)
+
+disp('Valor de pico:')
+disp(info_PID.Peak)
+
+%% =============================================================
+%%   LUGAR DAS RAÍZES
+%% =============================================================
+figure;
+rlocus(MA_sc,'b')
+hold on
+rlocus(MA_PID,'r')
+zgrid
+legend('Sem Controle','PID')
+title('Lugar das Raízes - PID vs Sem Controle')
+hold off
+end
+
+if false
+%% =============================================================
+%%   POLOS E ZEROS
+%% =============================================================
+figure;
+pzmap(MF_PID)
+grid on
+title('Polos e Zeros - PID')
+
+%% =============================================================
+%%   BODE
+%% =============================================================
+figure;
+margin(MA_PID)
+grid on
+title('Bode - PID (com margens)')
+
+figure;
+bode(MA_sc,'b',MA_PID,'r')
+grid on
+legend('Sem Controle','PID')
+title('Bode - Comparação')
+
+%% =============================================================
+%%   NYQUIST
+%% =============================================================
+figure;
+nyquist(MA_sc,'b',MA_PID,'r')
+grid on
+legend('Sem Controle','PID')
+title('Nyquist - Comparação')
+
+%% =============================================================
+%%   NICHOLS
+%% =============================================================
+figure;
+nichols(MA_sc,'b',MA_PID,'r')
+ngrid
+grid on
+legend('Sem Controle','PID')
+title('Nichols - Comparação')
+
+%% =============================================================
+%%   MARGENS DE ESTABILIDADE
+%% =============================================================
+[Gm, Pm, Wcg, Wcp] = margin(MA_PID);
+disp(' ');
+disp('### MARGENS - PID ###');
+fprintf('Margem de Ganho : %.4g (%.4g dB)\n', Gm,20*log10(Gm));
+fprintf('Margem de Fase  : %.4g graus\n', Pm);
+fprintf('Wcg (fase=-180°) : %.4g rad/s\n', Wcg);
+fprintf('Wcp (ganho=0 dB) : %.4g rad/s\n', Wcp);
+
+%% =============================================================
+%%   VERIFICAÇÃO DE ESTABILIDADE
+%% =============================================================
+disp(' ');
+disp('### POLOS DE MALHA FECHADA ###');
+pole(MF_PID)
+
+disp(' ');
+disp('### AMORTECIMENTO ###');
+damp(MF_PID)
+end
