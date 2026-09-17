@@ -79,7 +79,9 @@ A partir do ensaio prático em malha aberta registrado em [`matlab/dados/Vo.csv`
   $$G(s) = \frac{0,652 \cdot (10,30)^2}{s^2 + 2(0,0839)(10,30)s + (10,30)^2} = \frac{69,17}{s^2 + 1,728 s + 106,10}$$
 
 * **Domínio Discreto $G(z)$ (ZOH com $T_s = 10\text{ ms}$):**
+
   $$G(z) = \mathcal{Z}\left\{\frac{1-e^{-sT_s}}{s}G(s)\right\} = \frac{0,003436 z + 0,003416}{z^2 - 1,972 z + 0,9829}$$
+
 
 * **Polos em Malha Aberta:**
   $$z_{1,2} = 0,9860 \pm j 0,1028 \quad (|z| = 0,9914)$$
