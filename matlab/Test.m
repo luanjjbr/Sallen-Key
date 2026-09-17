@@ -2,6 +2,10 @@ clc;
 clear;
 close all;
 
+% Garante acesso à pasta de dados
+caminho_dados = fullfile(fileparts(mfilename('fullpath')), 'dados');
+if isfolder(caminho_dados), addpath(caminho_dados); end
+
 %% #############################################################
 %%   PARÂMETROS GERAIS
 %% #############################################################
