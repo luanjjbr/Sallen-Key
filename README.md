@@ -73,6 +73,7 @@ A partir do ensaio prático em malha aberta registrado em [`matlab/dados/Vo.csv`
   Medindo o período da oscilação amortecida ($N = 61$ amostras a $T_s = 0,01\text{ s} \implies T_d = 0,61\text{ s}$):
   $$\omega_n \approx \omega_d = \frac{2\pi}{N \cdot T_s} = \frac{2\pi}{61 \times 0,01} \approx 10,30\text{ rad/s}$$
 
+
 ### Funções de Transferência Resultantes:
 
 * **Domínio Contínuo $G(s)$:**
