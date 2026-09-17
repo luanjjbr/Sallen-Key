@@ -81,7 +81,7 @@ A partir do ensaio prático em malha aberta registrado em [`matlab/dados/Vo.csv`
 
 * **Domínio Discreto $G(z)$ (ZOH com $T_s = 10\text{ ms}$):**
 
-  $$G(z) = \mathcal{Z}\left\{\frac{1-e^{-sT_s}}{s}G(s)\right\} = \frac{0,003436 z + 0,003416}{z^2 - 1,972 z + 0,9829}$$
+  $$G(z) = \mathcal{Z} \left[ \frac{1 - e^{-sT_s}}{s} G(s) \right] = \frac{0,003436 z + 0,003416}{z^2 - 1,972 z + 0,9829}$$
 
 
 * **Polos em Malha Aberta:**
