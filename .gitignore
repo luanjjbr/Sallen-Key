@@ -53,3 +53,16 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+# MATLAB Autosaves & temporários
+*.asv
+*.m~
+slprj/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# VS Code & IDEs
+.vscode/
+.DS_Store
+Thumbs.db

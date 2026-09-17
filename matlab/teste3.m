@@ -2,6 +2,10 @@ clc;
 clear;
 close all;
 
+% Garante acesso à pasta de dados
+caminho_dados = fullfile(fileparts(mfilename('fullpath')), 'dados');
+if isfolder(caminho_dados), addpath(caminho_dados); end
+
 %% #############################################################
 %%   PARÂMETROS GERAIS
 %% #############################################################
@@ -368,11 +372,13 @@ cores_c  = {'k','b','g','c',[0.8 0.5 0],'r'};
 %   GRÁFICOS INDIVIDUAIS (um por controlador)
 % =============================================================
 for j = 1:length(nomes_c)
-    if ~isfile(arquivos{j})
+    arq_path = which(arquivos{j});
+    if isempty(arq_path), arq_path = fullfile(caminho_dados, arquivos{j}); end
+    if ~isfile(arq_path)
         warning('Arquivo %s não encontrado, pulando.', arquivos{j});
         continue
     end
-    dados = readtable(arquivos{j});
+    dados = readtable(arq_path);
     tp = dados.tempo;  vo = dados.Vo;
     idx = find(vo ~= 0, 1);
     tp = tp(idx:end) - tp(idx);
@@ -404,8 +410,10 @@ for j = 1:length(nomes_c)
     legendas{end+1} = [nomes_c{j} ' (planejado)'];
 
     % --- Arduino (linha cheia) ---
-    if isfile(arquivos{j})
-        dados = readtable(arquivos{j});
+    arq_path = which(arquivos{j});
+    if isempty(arq_path), arq_path = fullfile(caminho_dados, arquivos{j}); end
+    if isfile(arq_path)
+        dados = readtable(arq_path);
         tp = dados.tempo;  vo = dados.Vo;
         idx = find(vo ~= 0, 1);
         tp = tp(idx:end) - tp(idx);
